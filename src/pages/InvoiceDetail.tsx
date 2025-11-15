@@ -9,6 +9,7 @@ import { ArrowLeft, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/invoiceParser";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -109,16 +110,36 @@ export default function InvoiceDetail() {
         console.log('Respuesta de n8n:', data);
         
         // n8n devuelve un array de {CodigoServicio, RespuestaGlosa}
-        if (Array.isArray(data)) {
-          setGeneratedResponses(data);
-        } else {
-          // Si es un solo objeto, lo convertimos en array
-          setGeneratedResponses([data]);
+        const responses = Array.isArray(data) ? data : [data];
+        setGeneratedResponses(responses);
+        
+        // Actualizar los servicios con los comentarios
+        const updatedInvoice = { ...invoice };
+        responses.forEach((resp: {CodigoServicio: string, RespuestaGlosa: string}) => {
+          const serviceIndex = updatedInvoice.servicios.findIndex(
+            s => s.codigoServicio === resp.CodigoServicio
+          );
+          if (serviceIndex !== -1) {
+            updatedInvoice.servicios[serviceIndex].comentario = resp.RespuestaGlosa;
+          }
+        });
+        
+        // Actualizar en localStorage
+        const stored = localStorage.getItem('invoices');
+        if (stored) {
+          const invoices: InvoiceSummary[] = JSON.parse(stored);
+          const invoiceIndex = invoices.findIndex(inv => inv.factura === invoice.factura);
+          if (invoiceIndex !== -1) {
+            invoices[invoiceIndex] = updatedInvoice;
+            localStorage.setItem('invoices', JSON.stringify(invoices));
+          }
         }
+        
+        setInvoice(updatedInvoice);
         
         toast({
           title: "Éxito",
-          description: `Respuesta generada para ${Array.isArray(data) ? data.length : 1} servicio(s)`,
+          description: `Respuesta generada para ${responses.length} servicio(s)`,
         });
       } else {
         throw new Error('Error al enviar el archivo');
@@ -232,26 +253,52 @@ export default function InvoiceDetail() {
                         className="bg-danger-light/30"
                       >
                         <TableCell className="font-mono text-sm">
-                          {service.codigoServicio}
+                          {isGenerating ? (
+                            <Skeleton className="h-4 w-20" />
+                          ) : (
+                            service.codigoServicio
+                          )}
                         </TableCell>
                         <TableCell className="max-w-xs">
-                          <div className="truncate">{service.nombreServicio}</div>
-                        </TableCell>
-                        <TableCell>{service.cantidad}</TableCell>
-                        <TableCell>{formatMoney(service.valor)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-danger" />
-                            <span className="font-semibold text-danger">
-                              {formatMoney(service.valorGlosa)}
-                            </span>
-                          </div>
+                          {isGenerating ? (
+                            <Skeleton className="h-4 w-48" />
+                          ) : (
+                            <div className="truncate">{service.nombreServicio}</div>
+                          )}
                         </TableCell>
                         <TableCell>
-                          {service.comentario ? (
-                            <Badge variant="outline" className="text-xs">
-                              {service.comentario}
-                            </Badge>
+                          {isGenerating ? (
+                            <Skeleton className="h-4 w-12" />
+                          ) : (
+                            service.cantidad
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isGenerating ? (
+                            <Skeleton className="h-4 w-24" />
+                          ) : (
+                            formatMoney(service.valor)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isGenerating ? (
+                            <Skeleton className="h-4 w-24" />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-danger" />
+                              <span className="font-semibold text-danger">
+                                {formatMoney(service.valorGlosa)}
+                              </span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isGenerating ? (
+                            <Skeleton className="h-4 w-32" />
+                          ) : service.comentario ? (
+                            <div className="text-xs max-w-xs">
+                              <p className="text-foreground whitespace-pre-wrap">{service.comentario}</p>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
