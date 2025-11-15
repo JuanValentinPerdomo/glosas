@@ -1,0 +1,182 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Layout } from "@/components/Layout";
+import { InvoiceSummary, InvoiceService } from "@/types/invoice";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { formatMoney } from "@/lib/invoiceParser";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export default function InvoiceDetail() {
+  const { invoiceNumber } = useParams();
+  const navigate = useNavigate();
+  const [invoice, setInvoice] = useState<InvoiceSummary | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('invoices');
+    if (stored) {
+      const invoices: InvoiceSummary[] = JSON.parse(stored);
+      const found = invoices.find(inv => inv.factura === invoiceNumber);
+      setInvoice(found || null);
+    }
+  }, [invoiceNumber]);
+
+  if (!invoice) {
+    return (
+      <Layout>
+        <div className="text-center py-16">
+          <p className="text-muted-foreground">Factura no encontrada</p>
+          <Button onClick={() => navigate('/')} className="mt-4">
+            Volver al inicio
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const handleAnalyzeGloss = (service: InvoiceService) => {
+    navigate(`/analyze/${invoice.factura}/${service.codigoDetalle}`);
+  };
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                  <FileText className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">Factura {invoice.factura}</CardTitle>
+                  <p className="text-muted-foreground">
+                    Saldo: {formatMoney(invoice.saldoFactura)}
+                  </p>
+                </div>
+              </div>
+              <Button onClick={() => navigate(`/response/${invoice.factura}`)}>
+                Generar Respuesta
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-muted rounded-lg p-4">
+                <p className="text-sm text-muted-foreground mb-1">Total Servicios</p>
+                <p className="text-2xl font-bold text-foreground">{invoice.totalServicios}</p>
+              </div>
+              <div className="bg-danger-light rounded-lg p-4">
+                <p className="text-sm text-danger mb-1">Glosados</p>
+                <p className="text-2xl font-bold text-danger">{invoice.serviciosGlosados}</p>
+              </div>
+              <div className="bg-warning-light rounded-lg p-4">
+                <p className="text-sm text-warning mb-1">Valor Glosado</p>
+                <p className="text-2xl font-bold text-warning">
+                  {formatMoney(invoice.valorTotalGlosado)}
+                </p>
+              </div>
+              <div className="bg-success-light rounded-lg p-4">
+                <p className="text-sm text-success mb-1">Sin Glosa</p>
+                <p className="text-2xl font-bold text-success">
+                  {invoice.totalServicios - invoice.serviciosGlosados}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Servicios de la Factura</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Servicio</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Glosa</TableHead>
+                  <TableHead>Comentario</TableHead>
+                  <TableHead>Acción</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoice.servicios.map((service) => (
+                  <TableRow 
+                    key={service.codigoDetalle}
+                    className={service.valorGlosa > 0 ? 'bg-danger-light/30' : ''}
+                  >
+                    <TableCell className="font-mono text-sm">
+                      {service.codigoServicio}
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate">{service.nombreServicio}</div>
+                    </TableCell>
+                    <TableCell>{service.cantidad}</TableCell>
+                    <TableCell>{formatMoney(service.valor)}</TableCell>
+                    <TableCell>
+                      {service.valorGlosa > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-danger" />
+                          <span className="font-semibold text-danger">
+                            {formatMoney(service.valorGlosa)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-success">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="text-sm">Sin glosa</span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {service.comentario && (
+                        <Badge variant="outline" className="text-xs">
+                          {service.comentario}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {service.valorGlosa > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAnalyzeGloss(service)}
+                        >
+                          Analizar
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+}
