@@ -107,7 +107,8 @@ export default function InvoiceDetail() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Respuesta de n8n:', data);
+        console.log('Respuesta completa de n8n:', data);
+        console.log('Total de respuestas recibidas:', Array.isArray(data) ? data.length : 1);
         
         // n8n devuelve un array de {CodigoServicio, RespuestaGlosa}
         const responses = Array.isArray(data) ? data : [data];
@@ -115,14 +116,27 @@ export default function InvoiceDetail() {
         
         // Actualizar los servicios con los comentarios
         const updatedInvoice = { ...invoice };
+        let actualizados = 0;
+        
         responses.forEach((resp: {CodigoServicio: string, RespuestaGlosa: string}) => {
+          console.log(`Buscando servicio con código: ${resp.CodigoServicio}`);
+          
+          // Convertir ambos a string para comparación
           const serviceIndex = updatedInvoice.servicios.findIndex(
-            s => s.codigoServicio === resp.CodigoServicio
+            s => String(s.codigoServicio) === String(resp.CodigoServicio)
           );
+          
           if (serviceIndex !== -1) {
+            console.log(`✓ Servicio encontrado en índice ${serviceIndex}, actualizando comentario`);
             updatedInvoice.servicios[serviceIndex].comentario = resp.RespuestaGlosa;
+            actualizados++;
+          } else {
+            console.log(`✗ Servicio NO encontrado para código: ${resp.CodigoServicio}`);
+            console.log('Códigos disponibles:', updatedInvoice.servicios.map(s => s.codigoServicio));
           }
         });
+        
+        console.log(`Total de servicios actualizados: ${actualizados} de ${responses.length}`);
         
         // Actualizar en localStorage
         const stored = localStorage.getItem('invoices');
@@ -139,7 +153,7 @@ export default function InvoiceDetail() {
         
         toast({
           title: "Éxito",
-          description: `Respuesta generada para ${responses.length} servicio(s)`,
+          description: `${actualizados} de ${responses.length} servicio(s) actualizados`,
         });
       } else {
         throw new Error('Error al enviar el archivo');
