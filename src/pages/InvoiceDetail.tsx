@@ -106,9 +106,11 @@ export default function InvoiceDetail() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Respuesta de n8n:', data);
         
         // n8n devuelve {CodigoServicio, RespuestaGlosa}
         const respuesta = data.RespuestaGlosa || data.response || data.message || JSON.stringify(data);
+        console.log('Respuesta extraída:', respuesta);
         setGeneratedResponse(respuesta);
         
         toast({
