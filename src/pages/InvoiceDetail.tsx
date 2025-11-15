@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/invoiceParser";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -19,7 +21,9 @@ import {
 export default function InvoiceDetail() {
   const { invoiceNumber } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [invoice, setInvoice] = useState<InvoiceSummary | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('invoices');
@@ -43,8 +47,80 @@ export default function InvoiceDetail() {
     );
   }
 
-  const handleAnalyzeGloss = (service: InvoiceService) => {
-    navigate(`/analyze/${invoice.factura}/${service.codigoDetalle}`);
+  const handleGenerateResponse = async () => {
+    if (!invoice) return;
+
+    const glossedServices = invoice.servicios.filter(service => service.valorGlosa > 0);
+    
+    if (glossedServices.length === 0) {
+      toast({
+        title: "Sin glosas",
+        description: "No hay servicios glosados para procesar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Preparar datos para el Excel
+      const excelData = glossedServices.map(service => ({
+        CodigoDetalle: service.codigoDetalle,
+        CodigoQX: service.codigoQX,
+        Factura: service.factura,
+        'Saldo Factura': service.saldoFactura,
+        'C.C': service.cc,
+        CodigoServicio: service.codigoServicio,
+        NombreServicio: service.nombreServicio,
+        ValorServicio: service.valorServicio,
+        ValorUnitario: service.valorUnitario,
+        Cantidad: service.cantidad,
+        Valor: service.valor,
+        ValorPaciente: service.valorPaciente,
+        ValorEntidad: service.valorEntidad,
+        ValorGlosa: service.valorGlosa,
+        CodigoConcepto: service.codigoConcepto,
+        CodigoResponsable: service.codigoResponsable,
+        Comentario: service.comentario,
+      }));
+
+      // Crear workbook y worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(wb, ws, "Servicios Glosados");
+
+      // Convertir a blob
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      // Crear FormData y enviar a n8n
+      const formData = new FormData();
+      formData.append('file', blob, `glosas_${invoice.factura}.xlsx`);
+
+      const response = await fetch('http://localhost:5678/webhook-test/excel-upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Éxito",
+          description: "Archivo Excel enviado a n8n correctamente",
+        });
+      } else {
+        throw new Error('Error al enviar el archivo');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el archivo a n8n",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -75,8 +151,11 @@ export default function InvoiceDetail() {
                   </p>
                 </div>
               </div>
-              <Button onClick={() => navigate(`/response/${invoice.factura}`)}>
-                Generar Respuesta
+              <Button 
+                onClick={handleGenerateResponse}
+                disabled={isGenerating || invoice.serviciosGlosados === 0}
+              >
+                {isGenerating ? "Generando..." : "Generar Respuesta con IA"}
               </Button>
             </div>
           </CardHeader>
@@ -130,7 +209,6 @@ export default function InvoiceDetail() {
                     <TableHead>Valor</TableHead>
                     <TableHead>Glosa</TableHead>
                     <TableHead>Comentario</TableHead>
-                    <TableHead>Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -165,15 +243,6 @@ export default function InvoiceDetail() {
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAnalyzeGloss(service)}
-                          >
-                            Analizar
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
