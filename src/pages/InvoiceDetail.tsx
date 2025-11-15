@@ -106,7 +106,10 @@ export default function InvoiceDetail() {
 
       if (response.ok) {
         const data = await response.json();
-        setGeneratedResponse(data.response || data.message || 'Respuesta generada exitosamente');
+        
+        // n8n devuelve {CodigoServicio, RespuestaGlosa}
+        const respuesta = data.RespuestaGlosa || data.response || data.message || JSON.stringify(data);
+        setGeneratedResponse(respuesta);
         
         toast({
           title: "Éxito",
