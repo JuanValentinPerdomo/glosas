@@ -108,72 +108,78 @@ export default function InvoiceDetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Servicios de la Factura</CardTitle>
+            <CardTitle>Servicios Glosados ({invoice.serviciosGlosados})</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Mostrando solo servicios con glosa
+            </p>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Servicio</TableHead>
-                  <TableHead>Cantidad</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Glosa</TableHead>
-                  <TableHead>Comentario</TableHead>
-                  <TableHead>Acción</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoice.servicios.map((service) => (
-                  <TableRow 
-                    key={service.codigoDetalle}
-                    className={service.valorGlosa > 0 ? 'bg-danger-light/30' : ''}
-                  >
-                    <TableCell className="font-mono text-sm">
-                      {service.codigoServicio}
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate">{service.nombreServicio}</div>
-                    </TableCell>
-                    <TableCell>{service.cantidad}</TableCell>
-                    <TableCell>{formatMoney(service.valor)}</TableCell>
-                    <TableCell>
-                      {service.valorGlosa > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-danger" />
-                          <span className="font-semibold text-danger">
-                            {formatMoney(service.valorGlosa)}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-success">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span className="text-sm">Sin glosa</span>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {service.comentario && (
-                        <Badge variant="outline" className="text-xs">
-                          {service.comentario}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {service.valorGlosa > 0 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleAnalyzeGloss(service)}
-                        >
-                          Analizar
-                        </Button>
-                      )}
-                    </TableCell>
+            {invoice.serviciosGlosados === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-success" />
+                <p className="text-lg font-medium text-foreground">No hay servicios glosados</p>
+                <p className="text-sm text-muted-foreground">Esta factura no tiene glosas</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Servicio</TableHead>
+                    <TableHead>Cantidad</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Glosa</TableHead>
+                    <TableHead>Comentario</TableHead>
+                    <TableHead>Acción</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {invoice.servicios
+                    .filter(service => service.valorGlosa > 0)
+                    .map((service) => (
+                      <TableRow 
+                        key={service.codigoDetalle}
+                        className="bg-danger-light/30"
+                      >
+                        <TableCell className="font-mono text-sm">
+                          {service.codigoServicio}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="truncate">{service.nombreServicio}</div>
+                        </TableCell>
+                        <TableCell>{service.cantidad}</TableCell>
+                        <TableCell>{formatMoney(service.valor)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-danger" />
+                            <span className="font-semibold text-danger">
+                              {formatMoney(service.valorGlosa)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {service.comentario ? (
+                            <Badge variant="outline" className="text-xs">
+                              {service.comentario}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAnalyzeGloss(service)}
+                          >
+                            Analizar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
