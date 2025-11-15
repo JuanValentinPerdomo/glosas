@@ -24,7 +24,7 @@ export default function InvoiceDetail() {
   const { toast } = useToast();
   const [invoice, setInvoice] = useState<InvoiceSummary | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedResponse, setGeneratedResponse] = useState<string | null>(null);
+  const [generatedResponses, setGeneratedResponses] = useState<Array<{CodigoServicio: string, RespuestaGlosa: string}>>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem('invoices');
@@ -108,14 +108,17 @@ export default function InvoiceDetail() {
         const data = await response.json();
         console.log('Respuesta de n8n:', data);
         
-        // n8n devuelve {CodigoServicio, RespuestaGlosa}
-        const respuesta = data.RespuestaGlosa || data.response || data.message || JSON.stringify(data);
-        console.log('Respuesta extraída:', respuesta);
-        setGeneratedResponse(respuesta);
+        // n8n devuelve un array de {CodigoServicio, RespuestaGlosa}
+        if (Array.isArray(data)) {
+          setGeneratedResponses(data);
+        } else {
+          // Si es un solo objeto, lo convertimos en array
+          setGeneratedResponses([data]);
+        }
         
         toast({
           title: "Éxito",
-          description: "Respuesta generada correctamente",
+          description: `Respuesta generada para ${Array.isArray(data) ? data.length : 1} servicio(s)`,
         });
       } else {
         throw new Error('Error al enviar el archivo');
@@ -261,17 +264,22 @@ export default function InvoiceDetail() {
           </CardContent>
         </Card>
 
-        {generatedResponse && (
+        {generatedResponses.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Respuesta Generada</CardTitle>
+              <CardTitle>Respuestas Generadas ({generatedResponses.length})</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="bg-muted rounded-lg p-4">
-                <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">
-                  {generatedResponse}
-                </pre>
-              </div>
+            <CardContent className="space-y-4">
+              {generatedResponses.map((resp, index) => (
+                <div key={index} className="bg-muted rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{resp.CodigoServicio}</Badge>
+                  </div>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">
+                    {resp.RespuestaGlosa}
+                  </p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
