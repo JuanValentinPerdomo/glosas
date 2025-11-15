@@ -24,6 +24,7 @@ export default function InvoiceDetail() {
   const { toast } = useToast();
   const [invoice, setInvoice] = useState<InvoiceSummary | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedResponse, setGeneratedResponse] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('invoices');
@@ -104,9 +105,12 @@ export default function InvoiceDetail() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        setGeneratedResponse(data.response || data.message || 'Respuesta generada exitosamente');
+        
         toast({
           title: "Éxito",
-          description: "Archivo Excel enviado a n8n correctamente",
+          description: "Respuesta generada correctamente",
         });
       } else {
         throw new Error('Error al enviar el archivo');
@@ -251,6 +255,21 @@ export default function InvoiceDetail() {
             )}
           </CardContent>
         </Card>
+
+        {generatedResponse && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Respuesta Generada</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-muted rounded-lg p-4">
+                <pre className="whitespace-pre-wrap text-sm text-foreground font-sans">
+                  {generatedResponse}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
