@@ -107,11 +107,33 @@ export default function InvoiceDetail() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Respuesta completa de n8n:', data);
-        console.log('Total de respuestas recibidas:', Array.isArray(data) ? data.length : 1);
+        console.log('=== RESPUESTA COMPLETA DE N8N ===');
+        console.log('Tipo de data:', typeof data);
+        console.log('Es array?:', Array.isArray(data));
+        console.log('Contenido completo:', JSON.stringify(data, null, 2));
         
-        // n8n devuelve un array de {CodigoServicio, RespuestaGlosa}
-        const responses = Array.isArray(data) ? data : [data];
+        // n8n puede devolver el array directamente o envuelto en un objeto
+        let responses: Array<{CodigoServicio: string, RespuestaGlosa: string}> = [];
+        
+        if (Array.isArray(data)) {
+          // Si es un array directo, usarlo
+          responses = data;
+          console.log('✓ Array directo detectado, elementos:', data.length);
+        } else if (data.output && Array.isArray(data.output)) {
+          // Si viene en data.output (formato alternativo de n8n)
+          responses = data.output;
+          console.log('✓ Array en data.output detectado, elementos:', data.output.length);
+        } else if (data.data && Array.isArray(data.data)) {
+          // Si viene en data.data
+          responses = data.data;
+          console.log('✓ Array en data.data detectado, elementos:', data.data.length);
+        } else {
+          // Si es un solo objeto, convertir a array
+          responses = [data];
+          console.log('✓ Objeto único detectado, convertido a array');
+        }
+        
+        console.log('Total de respuestas a procesar:', responses.length);
         setGeneratedResponses(responses);
         
         // Actualizar los servicios con los comentarios
