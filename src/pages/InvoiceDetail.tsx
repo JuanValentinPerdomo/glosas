@@ -5,12 +5,14 @@ import { InvoiceSummary, InvoiceService } from "@/types/invoice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, AlertTriangle, CheckCircle2, Edit2, Save, X } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle, CheckCircle2, Edit2, Save, X, Download } from "lucide-react";
 import { formatMoney } from "@/lib/invoiceParser";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Table,
   TableBody,
@@ -249,6 +251,113 @@ export default function InvoiceDetail() {
     setEditedComment("");
   };
 
+  const handleGeneratePDF = () => {
+    if (!invoice || generatedResponses.length === 0) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFillColor(59, 130, 246); // primary color
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Respuesta a Glosas', pageWidth / 2, 20, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Factura: ${invoice.factura}`, pageWidth / 2, 32, { align: 'center' });
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    
+    // Invoice Summary
+    let yPosition = 55;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen de Factura', 14, yPosition);
+    
+    yPosition += 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Saldo Factura: ${formatMoney(invoice.saldoFactura)}`, 14, yPosition);
+    yPosition += 6;
+    doc.text(`Total Servicios: ${invoice.totalServicios}`, 14, yPosition);
+    yPosition += 6;
+    doc.text(`Servicios Glosados: ${invoice.serviciosGlosados}`, 14, yPosition);
+    yPosition += 6;
+    doc.text(`Valor Total Glosado: ${formatMoney(invoice.valorTotalGlosado)}`, 14, yPosition);
+    
+    // Table with responses
+    yPosition += 15;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Respuestas a Glosas', 14, yPosition);
+    
+    yPosition += 5;
+    
+    const tableData = invoice.servicios
+      .filter(service => service.valorGlosa > 0 && service.comentario)
+      .map(service => [
+        service.codigoServicio,
+        service.nombreServicio.substring(0, 40) + (service.nombreServicio.length > 40 ? '...' : ''),
+        formatMoney(service.valorGlosa),
+        service.comentario
+      ]);
+    
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Código', 'Servicio', 'Valor Glosa', 'Respuesta']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [0, 0, 0]
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 'auto' }
+      },
+      margin: { left: 14, right: 14 },
+      didDrawPage: (data) => {
+        // Footer
+        const pageCount = doc.getNumberOfPages();
+        const currentPage = doc.getCurrentPageInfo().pageNumber;
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(
+          `Página ${currentPage} de ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+        doc.text(
+          `Generado el ${new Date().toLocaleDateString('es-ES')}`,
+          14,
+          doc.internal.pageSize.getHeight() - 10
+        );
+      }
+    });
+    
+    // Save PDF
+    doc.save(`Respuesta_Glosas_${invoice.factura}_${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: "PDF generado",
+      description: "El documento ha sido descargado exitosamente",
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -277,12 +386,23 @@ export default function InvoiceDetail() {
                   </p>
                 </div>
               </div>
-              <Button 
-                onClick={handleGenerateResponse}
-                disabled={isGenerating || invoice.serviciosGlosados === 0}
-              >
-                {isGenerating ? "Generando..." : "Generar Respuesta con IA"}
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleGenerateResponse}
+                  disabled={isGenerating || invoice.serviciosGlosados === 0}
+                >
+                  {isGenerating ? "Generando..." : "Generar Respuesta con IA"}
+                </Button>
+                {generatedResponses.length > 0 && (
+                  <Button 
+                    onClick={handleGeneratePDF}
+                    variant="outline"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Descargar PDF
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
