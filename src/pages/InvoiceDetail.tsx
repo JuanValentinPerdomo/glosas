@@ -5,11 +5,12 @@ import { InvoiceSummary, InvoiceService } from "@/types/invoice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle, CheckCircle2, Edit2, Save, X } from "lucide-react";
 import { formatMoney } from "@/lib/invoiceParser";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -26,6 +27,8 @@ export default function InvoiceDetail() {
   const [invoice, setInvoice] = useState<InvoiceSummary | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResponses, setGeneratedResponses] = useState<Array<{CodigoServicio: string, RespuestaGlosa: string}>>([]);
+  const [editingService, setEditingService] = useState<string | null>(null);
+  const [editedComment, setEditedComment] = useState<string>("");
 
   useEffect(() => {
     const stored = localStorage.getItem('invoices');
@@ -203,6 +206,49 @@ export default function InvoiceDetail() {
     }
   };
 
+  const handleEditComment = (serviceCode: string, currentComment: string) => {
+    setEditingService(serviceCode);
+    setEditedComment(currentComment);
+  };
+
+  const handleSaveComment = (serviceCode: string) => {
+    if (!invoice) return;
+
+    const updatedInvoice = { ...invoice };
+    const serviceIndex = updatedInvoice.servicios.findIndex(
+      s => s.codigoServicio === serviceCode
+    );
+
+    if (serviceIndex !== -1) {
+      updatedInvoice.servicios[serviceIndex].comentario = editedComment;
+      
+      // Actualizar en localStorage
+      const stored = localStorage.getItem('invoices');
+      if (stored) {
+        const invoices: InvoiceSummary[] = JSON.parse(stored);
+        const invoiceIndex = invoices.findIndex(inv => inv.factura === invoice.factura);
+        if (invoiceIndex !== -1) {
+          invoices[invoiceIndex] = updatedInvoice;
+          localStorage.setItem('invoices', JSON.stringify(invoices));
+        }
+      }
+      
+      setInvoice(updatedInvoice);
+      setEditingService(null);
+      setEditedComment("");
+      
+      toast({
+        title: "Comentario actualizado",
+        description: "El comentario ha sido guardado exitosamente",
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingService(null);
+    setEditedComment("");
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -355,9 +401,46 @@ export default function InvoiceDetail() {
                           {isGenerating ? (
                             <Skeleton className="h-4 w-32" />
                           ) : service.comentario ? (
-                            <div className="text-xs max-w-xs">
-                              <p className="text-foreground whitespace-pre-wrap">{service.comentario}</p>
-                            </div>
+                            editingService === service.codigoServicio ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={editedComment}
+                                  onChange={(e) => setEditedComment(e.target.value)}
+                                  className="min-h-[100px] text-xs"
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveComment(service.codigoServicio)}
+                                  >
+                                    <Save className="w-3 h-3 mr-1" />
+                                    Guardar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    <X className="w-3 h-3 mr-1" />
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start gap-2">
+                                <div className="text-xs max-w-xs flex-1">
+                                  <p className="text-foreground whitespace-pre-wrap">{service.comentario}</p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditComment(service.codigoServicio, service.comentario)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
