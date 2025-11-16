@@ -142,14 +142,17 @@ export default function InvoiceDetail() {
         }
         
         console.log('Total de respuestas a procesar:', responses.length);
+        console.log('Primera respuesta completa:', JSON.stringify(responses[0], null, 2));
         setGeneratedResponses(responses);
         
         // Actualizar los servicios con los comentarios
         const updatedInvoice = { ...invoice };
         let actualizados = 0;
         
-        responses.forEach((resp: {CodigoServicio: string, RespuestaGlosa: string}) => {
-          console.log(`Buscando servicio con código: ${resp.CodigoServicio}`);
+        responses.forEach((resp: any) => {
+          console.log(`Procesando respuesta:`, resp);
+          console.log(`  - CodigoServicio: ${resp.CodigoServicio}`);
+          console.log(`  - RespuestaGlosa: ${resp.RespuestaGlosa}`);
           
           // Convertir ambos a string para comparación
           const serviceIndex = updatedInvoice.servicios.findIndex(
