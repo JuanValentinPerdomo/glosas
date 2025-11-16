@@ -100,7 +100,7 @@ export default function InvoiceDetail() {
       const formData = new FormData();
       formData.append('file', blob, `glosas_${invoice.factura}.xlsx`);
 
-      const response = await fetch('http://localhost:5678/webhook-test/excel-upload', {
+      const response = await fetch('http://localhost:5678/webhook-test/b55df678-60f1-4151-b518-f23dfa3d8201', {
         method: 'POST',
         body: formData,
       });
