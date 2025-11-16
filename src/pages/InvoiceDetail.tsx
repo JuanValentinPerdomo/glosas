@@ -153,8 +153,9 @@ export default function InvoiceDetail() {
           );
           
           if (serviceIndex !== -1) {
-            console.log(`✓ Servicio encontrado en índice ${serviceIndex}, actualizando comentario`);
+            console.log(`✓ Servicio encontrado en índice ${serviceIndex}, actualizando comentario y glosa`);
             updatedInvoice.servicios[serviceIndex].comentario = resp.RespuestaGlosa;
+            updatedInvoice.servicios[serviceIndex].valorGlosa = 0;
             actualizados++;
           } else {
             console.log(`✗ Servicio NO encontrado para código: ${resp.CodigoServicio}`);
@@ -286,11 +287,14 @@ export default function InvoiceDetail() {
                 </TableHeader>
                 <TableBody>
                   {invoice.servicios
-                    .filter(service => service.valorGlosa > 0)
+                    .filter(service => service.valorGlosa > 0 || service.comentario)
                     .map((service) => (
                       <TableRow 
                         key={service.codigoDetalle}
-                        className="bg-danger-light/30"
+                        className={service.comentario && service.valorGlosa === 0 
+                          ? "bg-warning-light/30" 
+                          : "bg-danger-light/30"
+                        }
                       >
                         <TableCell className="font-mono text-sm">
                           {isGenerating ? (
@@ -323,6 +327,15 @@ export default function InvoiceDetail() {
                         <TableCell>
                           {isGenerating ? (
                             <Skeleton className="h-4 w-24" />
+                          ) : service.valorGlosa === 0 && service.comentario ? (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
+                                Pendiente
+                              </Badge>
+                              <span className="font-semibold text-muted-foreground line-through">
+                                {formatMoney(0)}
+                              </span>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               <AlertTriangle className="w-4 h-4 text-danger" />
