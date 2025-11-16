@@ -153,9 +153,8 @@ export default function InvoiceDetail() {
           );
           
           if (serviceIndex !== -1) {
-            console.log(`✓ Servicio encontrado en índice ${serviceIndex}, actualizando comentario y glosa`);
+            console.log(`✓ Servicio encontrado en índice ${serviceIndex}, actualizando comentario`);
             updatedInvoice.servicios[serviceIndex].comentario = resp.RespuestaGlosa;
-            updatedInvoice.servicios[serviceIndex].valorGlosa = 0;
             actualizados++;
           } else {
             console.log(`✗ Servicio NO encontrado para código: ${resp.CodigoServicio}`);
@@ -291,7 +290,7 @@ export default function InvoiceDetail() {
                     .map((service) => (
                       <TableRow 
                         key={service.codigoDetalle}
-                        className={service.comentario && service.valorGlosa === 0 
+                        className={service.comentario
                           ? "bg-warning-light/30" 
                           : "bg-danger-light/30"
                         }
@@ -327,13 +326,13 @@ export default function InvoiceDetail() {
                         <TableCell>
                           {isGenerating ? (
                             <Skeleton className="h-4 w-24" />
-                          ) : service.valorGlosa === 0 && service.comentario ? (
+                          ) : service.comentario ? (
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
                                 Pendiente
                               </Badge>
-                              <span className="font-semibold text-muted-foreground line-through">
-                                {formatMoney(0)}
+                              <span className="font-semibold text-warning">
+                                {formatMoney(service.valorGlosa)}
                               </span>
                             </div>
                           ) : (
