@@ -119,6 +119,10 @@ export default function InvoiceDetail() {
           // Si es un array directo, usarlo
           responses = data;
           console.log('✓ Array directo detectado, elementos:', data.length);
+        } else if (data.respuestas && Array.isArray(data.respuestas)) {
+          // Si viene en data.respuestas (formato de n8n)
+          responses = data.respuestas;
+          console.log('✓ Array en data.respuestas detectado, elementos:', data.respuestas.length);
         } else if (data.output && Array.isArray(data.output)) {
           // Si viene en data.output (formato alternativo de n8n)
           responses = data.output;
